@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  # The Core API (FastAPI)
+  backend:
+    build: ./backend
+    env_file: .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - duckling
+      - whisper
+      - ollama
+      - tts
+    networks:
+      - antik_network
+
+  # Date/Time Intelligence
+  duckling:
+    image: rasa/duckling:latest
+    ports:
+      - "8001:8000"
+    networks:
+      - antik_network
+
+  # Local Hearing Mind (Faster Whisper)
+  whisper:
+    image: fedirz/faster-whisper-server:latest-cpu
+    ports:
+      - "9000:8000"
+    environment:
+      - WHISPER_MODEL=base
+    networks:
+      - antik_network
+
+  # The Brain (Ollama)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - antik_network
+
+  # The Voice (Piper TTS)
+  tts:
+    image: lscr.io/linuxserver/piper:latest
+    container_name: tts
+    environment:
+      - PIPER_VOICE=en_US-lessac-medium
+    ports:
+      - "10200:10200"
+    networks:
+      - antik_network
+
+  # Secure Local Storage
+  db:
+    image: postgres:15-alpine
+    environment:
+      # These must match what is in your .env
+      POSTGRES_USER: ${DB_USER:-postgres}         # Default to postgres if missing
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-password} # Default to password if missing
+      POSTGRES_DB: ${DB_NAME:-antik}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - antik_network
+
+networks:
+  antik_network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  ollama_data:
